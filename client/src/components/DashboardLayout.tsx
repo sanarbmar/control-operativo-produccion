@@ -21,19 +21,21 @@ import {
 } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { ClipboardList, Factory, LayoutDashboard, LibraryBig, LogOut, PanelLeft, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+  { icon: LayoutDashboard, label: "Resumen diario", path: "/" },
+  { icon: ClipboardList, label: "Tareas", path: "/tareas" },
+  { icon: Users, label: "Equipo", path: "/equipo" },
+  { icon: LibraryBig, label: "Catálogo", path: "/catalogo" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
-const DEFAULT_WIDTH = 280;
+const DEFAULT_WIDTH = 252;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
 
@@ -58,14 +60,17 @@ export default function DashboardLayout({
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
+      <div className="flex items-center justify-center min-h-screen bg-[#173b35] px-5">
+        <div className="flex flex-col items-center gap-8 p-9 max-w-md w-full rounded-[28px] bg-[#fffdf8] shadow-2xl">
           <div className="flex flex-col items-center gap-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
-              Sign in to continue
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-emerald-950/20">
+              <Factory className="h-6 w-6" />
+            </div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-center">
+              Control Operativo
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this dashboard requires authentication. Continue to launch the login flow.
+              Inicia sesión para organizar el trabajo diario y consultar el rendimiento del equipo.
             </p>
           </div>
           <Button
@@ -73,7 +78,7 @@ export default function DashboardLayout({
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >
-            Sign in
+            Iniciar sesión
           </Button>
         </div>
       </div>
@@ -157,27 +162,32 @@ function DashboardLayoutContent({
           className="border-r-0"
           disableTransition={isResizing}
         >
-          <SidebarHeader className="h-16 justify-center">
+          <SidebarHeader className="h-20 justify-center border-b border-white/10">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
                 className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
                 aria-label="Toggle navigation"
               >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                <PanelLeft className="h-4 w-4 text-sidebar-foreground/70" />
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    Navigation
-                  </span>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-black/10">
+                    <Factory className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-sm font-extrabold leading-tight tracking-[-0.02em]">Control Operativo</span>
+                    <span className="block text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/50">Producción diaria</span>
+                  </div>
                 </div>
               ) : null}
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
+          <SidebarContent className="gap-0 pt-5">
+            {!isCollapsed ? <p className="px-5 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-sidebar-foreground/40">Navegación</p> : null}
+            <SidebarMenu className="px-2 py-1 gap-1">
               {menuItems.map(item => {
                 const isActive = location === item.path;
                 return (
@@ -186,7 +196,7 @@ function DashboardLayoutContent({
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
+                      className="h-11 rounded-xl font-semibold text-sidebar-foreground/70 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-foreground"
                     >
                       <item.icon
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
@@ -224,7 +234,7 @@ function DashboardLayoutContent({
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
+                  <span>Cerrar sesión</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -255,7 +265,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="flex-1 p-0">{children}</main>
       </SidebarInset>
     </>
   );

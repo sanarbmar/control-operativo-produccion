@@ -1,0 +1,34 @@
+# Project TODO
+
+- [x] Definir una identidad visual elegante con paleta cálida profesional, tipografía legible, jerarquía clara y diseño responsive.
+- [x] Usar y adaptar el layout de panel lateral provisto por el proyecto para las vistas operativas.
+- [x] Crear el modelo de áreas Producción, Ventas y Administración.
+- [x] Crear el modelo de colaboradores con nombre, área, estado activo y fecha de creación.
+- [x] Cargar inicialmente a Benjamín, Rojo, Sebastián, Jhampier, Juan Pablo, Paola y Jesús Adrián en Producción.
+- [x] Cargar inicialmente a Valentina, Juan Manuel y Cristian en Ventas.
+- [x] Cargar inicialmente a Catalina en Administración.
+- [x] Crear un catálogo editable de tareas con nombre, área sugerida, unidad de medida, uso de cantidad y estado activo.
+- [x] Incluir inicialmente desdoblar forros, embolsar espuma, cortar caras de sintético, cortar falsos, cortar refuerzos, embolsar colchoneta, empacar colchonetas, recibir recepción, confeccionar colchonetas, contar calleras y contar forros.
+- [x] Permitir variantes editables por tarea e incluir Dólaro, JP, Alaskan y GT para cortar caras de sintético.
+- [x] Crear tareas diarias con fecha, responsable, área, ítem de catálogo, variante, cantidad objetivo, unidad y observaciones.
+- [x] Permitir editar y eliminar tareas diarias con confirmación.
+- [x] Registrar manualmente fecha y hora de inicio y finalización de cada tarea.
+- [x] Calcular y mostrar duración automáticamente, validando que la hora final sea posterior a la inicial.
+- [x] Registrar cantidad completada y notas del resultado para cada tarea.
+- [x] Manejar estados Pendiente, En proceso y Completada de forma consistente.
+- [x] Crear tablero diario con filtros por rango de fecha, persona y área.
+- [x] Mostrar indicadores de tareas totales, completadas, cantidad producida y tiempo registrado.
+- [x] Mostrar rendimiento por persona con tareas completadas, cantidades, tiempo total y promedio por unidad cuando aplique.
+- [x] Mostrar distribución de carga y avance mediante visualizaciones claras sin inventar metas no definidas.
+- [x] Crear vista de tareas con búsqueda, filtros, estados y acciones rápidas.
+- [x] Crear vista de equipo para agregar, editar, activar o desactivar colaboradores.
+- [x] Crear vista de catálogo para agregar, editar y activar o desactivar tareas y variantes.
+- [x] Implementar estados de carga, vacío, error y confirmaciones de acciones destructivas.
+- [x] Proteger las operaciones y los datos con autenticación del proyecto.
+- [x] Crear migración de base de datos y aplicarla de forma segura.
+- [x] Añadir pruebas Vitest para cálculos de duración, validaciones y procedimientos críticos.
+- [x] Ejecutar comprobación de tipos, pruebas automatizadas y compilación de producción.
+- [x] Verificar visualmente las vistas principales en escritorio y móvil.
+- [x] Guardar una única versión final comprobable y entregarla al usuario.
+- [x] Añadir un estado vacío explícito en Equipo cuando no haya colaboradores para el filtro aplicado.
+- [x] Añadir un estado vacío explícito en Catálogo cuando no haya procesos disponibles.
