@@ -17,6 +17,7 @@ type FormState = {
   taskCatalogId: string;
   variantId: string;
   targetQuantity: string;
+  targetDurationMinutes: string;
   completedQuantity: string;
   unit: string;
   startAt: string;
@@ -26,7 +27,7 @@ type FormState = {
 
 const emptyForm = (): FormState => ({
   workDate: dateInputValue(), employeeId: "", area: "produccion", taskCatalogId: "", variantId: "none",
-  targetQuantity: "", completedQuantity: "", unit: "unidades", startAt: "", endAt: "", notes: "",
+  targetQuantity: "", targetDurationMinutes: "", completedQuantity: "", unit: "unidades", startAt: "", endAt: "", notes: "",
 });
 
 export function TaskFormDialog({ open, onOpenChange, task }: { open: boolean; onOpenChange: (open: boolean) => void; task?: TaskRecord | null }) {
@@ -43,7 +44,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: { open: boolean; on
     setForm(task ? {
       workDate: dateInputValue(task.workDate), employeeId: String(task.employeeId), area: task.area,
       taskCatalogId: String(task.taskCatalogId), variantId: task.variantId ? String(task.variantId) : "none",
-      targetQuantity: task.targetQuantity ?? "", completedQuantity: task.completedQuantity ?? "", unit: task.unit,
+      targetQuantity: task.targetQuantity ?? "", targetDurationMinutes: task.targetDurationMinutes ? String(task.targetDurationMinutes) : "", completedQuantity: task.completedQuantity ?? "", unit: task.unit,
       startAt: dateTimeInputValue(task.startAt), endAt: dateTimeInputValue(task.endAt), notes: task.notes ?? "",
     } : emptyForm());
   }, [open, task]);
@@ -63,6 +64,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: { open: boolean; on
       workDate: new Date(`${form.workDate}T12:00:00`).getTime(), employeeId: Number(form.employeeId), area: form.area,
       taskCatalogId: Number(form.taskCatalogId), variantId: form.variantId === "none" ? null : Number(form.variantId),
       targetQuantity: form.targetQuantity === "" ? null : Number(form.targetQuantity),
+      targetDurationMinutes: form.targetDurationMinutes === "" ? null : Number(form.targetDurationMinutes),
       completedQuantity: form.completedQuantity === "" ? null : Number(form.completedQuantity), unit: form.unit,
       startAt: form.startAt ? new Date(form.startAt).getTime() : null,
       endAt: form.endAt ? new Date(form.endAt).getTime() : null, notes: form.notes || null,
@@ -90,10 +92,10 @@ export function TaskFormDialog({ open, onOpenChange, task }: { open: boolean; on
             <div className="space-y-2"><Label>Fecha de trabajo</Label><Input type="date" value={form.workDate} onChange={e => update("workDate", e.target.value)} required /></div>
             <div className="space-y-2"><Label>Responsable</Label><Select value={form.employeeId} onValueChange={value => { const person = employees.find(item => String(item.id) === value); setForm(current => ({ ...current, employeeId: value, area: person?.area ?? current.area })); }}><SelectTrigger><SelectValue placeholder="Seleccionar persona" /></SelectTrigger><SelectContent>{employees.map(person => <SelectItem key={person.id} value={String(person.id)}>{person.name}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>Área</Label><Select value={form.area} onValueChange={value => update("area", value as FormState["area"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="produccion">Producción</SelectItem><SelectItem value="ventas">Ventas</SelectItem><SelectItem value="administracion">Administración</SelectItem></SelectContent></Select></div>
-            <div className="space-y-2"><Label>Tarea</Label><Select value={form.taskCatalogId} onValueChange={value => { const item = catalog.find(option => String(option.id) === value); setForm(current => ({ ...current, taskCatalogId: value, unit: item?.unit ?? current.unit, variantId: "none" })); }}><SelectTrigger><SelectValue placeholder="Seleccionar tarea" /></SelectTrigger><SelectContent>{catalog.map(item => <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label>Tarea</Label><Select value={form.taskCatalogId} onValueChange={value => { const item = catalog.find(option => String(option.id) === value); setForm(current => ({ ...current, taskCatalogId: value, unit: item?.unit ?? current.unit, targetQuantity: item?.defaultTargetQuantity ?? "", targetDurationMinutes: item?.defaultTargetMinutes ? String(item.defaultTargetMinutes) : "", variantId: "none" })); }}><SelectTrigger><SelectValue placeholder="Seleccionar tarea" /></SelectTrigger><SelectContent>{catalog.map(item => <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>)}</SelectContent></Select></div>
             {selectedCatalog?.hasVariants ? <div className="space-y-2"><Label>Variante</Label><Select value={form.variantId} onValueChange={value => update("variantId", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Sin variante</SelectItem>{selectedCatalog.variants.map(variant => <SelectItem key={variant.id} value={String(variant.id)}>{variant.name}</SelectItem>)}</SelectContent></Select></div> : null}
             <div className="space-y-2"><Label>Unidad</Label><Input value={form.unit} onChange={e => update("unit", e.target.value)} required /></div>
-            {selectedCatalog?.usesQuantity !== false ? <><div className="space-y-2"><Label>Cantidad objetivo</Label><Input type="number" min="0" step="0.01" value={form.targetQuantity} onChange={e => update("targetQuantity", e.target.value)} placeholder="Ej. 120" /></div><div className="space-y-2"><Label>Cantidad completada</Label><Input type="number" min="0" step="0.01" value={form.completedQuantity} onChange={e => update("completedQuantity", e.target.value)} placeholder="Ej. 110" /></div></> : null}
+            {selectedCatalog?.usesQuantity !== false ? <><div className="space-y-2"><Label>Meta de cantidad</Label><Input type="number" min="0" step="0.01" value={form.targetQuantity} onChange={e => update("targetQuantity", e.target.value)} placeholder="Ej. 120" /><p className="text-[11px] text-muted-foreground">Se copia del catálogo y puede ajustarse para esta asignación.</p></div><div className="space-y-2"><Label>Duración objetivo (minutos)</Label><Input type="number" min="1" step="1" value={form.targetDurationMinutes} onChange={e => update("targetDurationMinutes", e.target.value)} placeholder="Ej. 60" /><p className="text-[11px] text-muted-foreground">Tiempo esperado para completar la meta.</p></div><div className="space-y-2"><Label>Cantidad completada</Label><Input type="number" min="0" step="0.01" value={form.completedQuantity} onChange={e => update("completedQuantity", e.target.value)} placeholder="Ej. 110" /></div></> : null}
           </div>
           <div className="rounded-2xl bg-muted/55 p-4">
             <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-muted-foreground">Registro de tiempo</p>

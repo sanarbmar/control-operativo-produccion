@@ -148,20 +148,38 @@ export async function listCatalog(includeInactive = false) {
   return tasks.map(task => ({ ...task, variants: variants.filter(variant => variant.taskCatalogId === task.id) }));
 }
 
-export async function createCatalogTask(
-  values: Pick<InsertCatalogTask, "name" | "area" | "unit" | "usesQuantity" | "hasVariants">,
-) {
+export async function getCatalogTaskById(id: number) {
   const db = await requireDb();
-  const result = await db.insert(taskCatalog).values(values);
+  const result = await db.select().from(taskCatalog).where(eq(taskCatalog.id, id)).limit(1);
+  return result[0];
+}
+
+type CatalogTaskWrite = Pick<InsertCatalogTask, "name" | "area" | "unit" | "usesQuantity" | "hasVariants"> & {
+  defaultTargetQuantity?: number | string | null;
+  defaultTargetMinutes?: number | null;
+};
+
+export async function createCatalogTask(values: CatalogTaskWrite) {
+  const db = await requireDb();
+  const result = await db.insert(taskCatalog).values({
+    ...values,
+    defaultTargetQuantity: values.defaultTargetQuantity == null ? null : String(values.defaultTargetQuantity),
+  });
   return { id: Number(result[0].insertId) };
 }
 
 export async function updateCatalogTask(
-  values: Pick<InsertCatalogTask, "name" | "area" | "unit" | "usesQuantity" | "hasVariants"> & { id: number },
+  values: CatalogTaskWrite & { id: number },
 ) {
   const db = await requireDb();
   const { id, ...set } = values;
-  await db.update(taskCatalog).set(set).where(eq(taskCatalog.id, id));
+  await db
+    .update(taskCatalog)
+    .set({
+      ...set,
+      defaultTargetQuantity: set.defaultTargetQuantity == null ? null : String(set.defaultTargetQuantity),
+    })
+    .where(eq(taskCatalog.id, id));
   return { success: true } as const;
 }
 
@@ -218,6 +236,7 @@ export async function listDailyTasks(filters: DailyTaskFilters) {
       variantName: taskVariants.name,
       status: dailyTasks.status,
       targetQuantity: dailyTasks.targetQuantity,
+      targetDurationMinutes: dailyTasks.targetDurationMinutes,
       completedQuantity: dailyTasks.completedQuantity,
       unit: dailyTasks.unit,
       startAt: dailyTasks.startAt,

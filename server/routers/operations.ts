@@ -6,6 +6,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 
 const areaSchema = z.enum(AREAS);
 const optionalPositiveQuantity = z.number().nonnegative().max(9999999999).nullable().optional();
+const optionalPositiveMinutes = z.number().int().positive().max(100000).nullable().optional();
 
 const taskInput = z.object({
   workDate: z.number().int().nonnegative(),
@@ -14,11 +15,22 @@ const taskInput = z.object({
   taskCatalogId: z.number().int().positive(),
   variantId: z.number().int().positive().nullable().optional(),
   targetQuantity: optionalPositiveQuantity,
+  targetDurationMinutes: optionalPositiveMinutes,
   completedQuantity: optionalPositiveQuantity,
   unit: z.string().trim().min(1).max(50),
   startAt: z.number().int().nonnegative().nullable().optional(),
   endAt: z.number().int().nonnegative().nullable().optional(),
   notes: z.string().trim().max(2000).nullable().optional(),
+});
+
+const catalogInput = z.object({
+  name: z.string().trim().min(2).max(180),
+  area: areaSchema,
+  unit: z.string().trim().min(1).max(50),
+  usesQuantity: z.boolean(),
+  hasVariants: z.boolean(),
+  defaultTargetQuantity: optionalPositiveQuantity,
+  defaultTargetMinutes: optionalPositiveMinutes,
 });
 
 function assertValidTimeline(startAt?: number | null, endAt?: number | null) {
@@ -46,28 +58,9 @@ export const operationsRouter = router({
     list: protectedProcedure
       .input(z.object({ includeInactive: z.boolean().optional() }).optional())
       .query(({ input }) => db.listCatalog(input?.includeInactive ?? false)),
-    create: protectedProcedure
-      .input(
-        z.object({
-          name: z.string().trim().min(2).max(180),
-          area: areaSchema,
-          unit: z.string().trim().min(1).max(50),
-          usesQuantity: z.boolean(),
-          hasVariants: z.boolean(),
-        }),
-      )
-      .mutation(({ input }) => db.createCatalogTask(input)),
+    create: protectedProcedure.input(catalogInput).mutation(({ input }) => db.createCatalogTask(input)),
     update: protectedProcedure
-      .input(
-        z.object({
-          id: z.number().int().positive(),
-          name: z.string().trim().min(2).max(180),
-          area: areaSchema,
-          unit: z.string().trim().min(1).max(50),
-          usesQuantity: z.boolean(),
-          hasVariants: z.boolean(),
-        }),
-      )
+      .input(catalogInput.extend({ id: z.number().int().positive() }))
       .mutation(({ input }) => db.updateCatalogTask(input)),
     setActive: protectedProcedure
       .input(z.object({ id: z.number().int().positive(), isActive: z.boolean() }))
@@ -95,12 +88,14 @@ export const operationsRouter = router({
         }),
       )
       .query(({ input }) => db.listDailyTasks(input)),
-    create: protectedProcedure.input(taskInput).mutation(({ input, ctx }) => {
+    create: protectedProcedure.input(taskInput).mutation(async ({ input, ctx }) => {
       assertValidTimeline(input.startAt, input.endAt);
+      const catalogDefaults = await db.getCatalogTaskById(input.taskCatalogId);
       return db.createDailyTask({
         ...input,
         variantId: input.variantId ?? null,
-        targetQuantity: input.targetQuantity ?? null,
+        targetQuantity: input.targetQuantity ?? catalogDefaults?.defaultTargetQuantity ?? null,
+        targetDurationMinutes: input.targetDurationMinutes ?? catalogDefaults?.defaultTargetMinutes ?? null,
         completedQuantity: input.completedQuantity ?? null,
         startAt: input.startAt ?? null,
         endAt: input.endAt ?? null,
@@ -118,6 +113,7 @@ export const operationsRouter = router({
           ...values,
           variantId: values.variantId ?? null,
           targetQuantity: values.targetQuantity ?? null,
+          targetDurationMinutes: values.targetDurationMinutes ?? null,
           completedQuantity: values.completedQuantity ?? null,
           startAt: values.startAt ?? null,
           endAt: values.endAt ?? null,

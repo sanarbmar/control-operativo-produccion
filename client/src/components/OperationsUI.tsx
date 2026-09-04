@@ -56,6 +56,18 @@ export function StatusBadge({ status }: { status: TaskStatus }) {
   return <Badge variant="outline" className={cn("font-bold", colors[status])}>{statusLabels[status]}</Badge>;
 }
 
+export function EfficiencyBadge({ value }: { value: number | null }) {
+  if (value == null) {
+    return <Badge variant="outline" className="border-slate-200 bg-slate-50 font-bold text-slate-500">Sin cálculo</Badge>;
+  }
+  const tone = value >= 100
+    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+    : value >= 80
+      ? "border-amber-200 bg-amber-50 text-amber-800"
+      : "border-red-200 bg-red-50 text-red-700";
+  return <Badge variant="outline" className={cn("font-extrabold tabular-nums", tone)}>{value.toLocaleString("es-CO", { maximumFractionDigits: 1 })}%</Badge>;
+}
+
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
     <div className="relative flex min-h-52 flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted/25 px-6 text-center">

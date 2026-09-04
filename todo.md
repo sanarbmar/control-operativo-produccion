@@ -32,3 +32,13 @@
 - [x] Guardar una única versión final comprobable y entregarla al usuario.
 - [x] Añadir un estado vacío explícito en Equipo cuando no haya colaboradores para el filtro aplicado.
 - [x] Añadir un estado vacío explícito en Catálogo cuando no haya procesos disponibles.
+- [x] Permitir definir en cada tarea del catálogo una meta estándar de cantidad y una duración objetivo en minutos.
+- [x] Permitir ajustar la meta y la duración objetivo para una asignación diaria específica sin modificar el estándar del catálogo.
+- [x] Conservar en cada asignación una copia de la meta aplicada para que el histórico no cambie al editar el catálogo.
+- [x] Calcular la eficiencia de una tarea como producción real por hora frente a la producción objetivo por hora.
+- [x] Mostrar la eficiencia porcentual en la lista de tareas y distinguir visualmente registros sin datos suficientes.
+- [x] Calcular la eficiencia consolidada de cada persona ponderando las cantidades objetivo correspondientes al tiempo trabajado.
+- [x] Mostrar eficiencia individual y promedio del equipo en el tablero con filtros por fecha, persona y área.
+- [x] Añadir validaciones y pruebas automatizadas para metas, duración objetivo y eficiencia.
+- [x] Verificar visualmente la configuración y los indicadores de eficiencia en escritorio y móvil.
+- [x] Guardar y entregar una nueva versión comprobable con la mejora de metas y eficiencia.

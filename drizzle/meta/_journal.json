@@ -15,6 +15,13 @@
       "when": 1788469996713,
       "tag": "0001_worthless_dragon_lord",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1788557108495,
+      "tag": "0002_lean_betty_ross",
+      "breakpoints": true
     }
   ]
 }

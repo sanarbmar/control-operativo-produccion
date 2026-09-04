@@ -1,4 +1,4 @@
-import { EmptyState, ErrorState, LoadingState, MetricCard, PageHeader, StatusBadge } from "@/components/OperationsUI";
+import { EfficiencyBadge, EmptyState, ErrorState, LoadingState, MetricCard, PageHeader, StatusBadge } from "@/components/OperationsUI";
 import { TaskFormDialog } from "@/components/TaskFormDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,8 @@ import {
   TaskRecord,
 } from "@/lib/operations";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle2, ClipboardCheck, Clock3, PackageCheck, Plus, UsersRound } from "lucide-react";
+import { weightedEfficiencyPercent } from "@shared/operations";
+import { CheckCircle2, ClipboardCheck, Clock3, Gauge, PackageCheck, Plus, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -25,6 +26,7 @@ type PersonPerformance = {
   cantidad: number;
   minutos: number;
   unidades: Set<string>;
+  efficiencyRecords: Array<{ completedQuantity: string | null; actualMinutes: number; targetQuantity: string | null; targetMinutes: number | null }>;
 };
 
 export default function Home() {
@@ -61,16 +63,25 @@ export default function Home() {
         cantidad: 0,
         minutos: 0,
         unidades: new Set<string>(),
+        efficiencyRecords: [],
       };
       current.tareas += 1;
       current.completadas += task.status === "completada" ? 1 : 0;
       current.cantidad += Number(task.completedQuantity ?? 0);
-      current.minutos += durationMinutes(task.startAt, task.endAt);
+      const taskMinutes = durationMinutes(task.startAt, task.endAt);
+      current.minutos += taskMinutes;
       if (task.completedQuantity) current.unidades.add(task.unit);
+      current.efficiencyRecords.push({ completedQuantity: task.completedQuantity, actualMinutes: taskMinutes, targetQuantity: task.targetQuantity, targetMinutes: task.targetDurationMinutes });
       acc[task.employeeId] = current;
       return acc;
     }, {}),
   ).sort((a, b) => b.completadas - a.completadas || b.cantidad - a.cantidad);
+  const teamEfficiency = weightedEfficiencyPercent(tasks.map(task => ({
+    completedQuantity: task.completedQuantity,
+    actualMinutes: durationMinutes(task.startAt, task.endAt),
+    targetQuantity: task.targetQuantity,
+    targetMinutes: task.targetDurationMinutes,
+  })));
 
   return (
     <div className="min-h-screen px-4 py-6 sm:px-7 sm:py-8 lg:px-10">
@@ -119,11 +130,12 @@ export default function Home() {
           <ErrorState description="No fue posible cargar el resumen operativo. Revisa la conexión e intenta nuevamente." />
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
               <MetricCard label="Tareas asignadas" value={tasks.length} detail="En el periodo seleccionado" icon={ClipboardCheck} tone="green" />
               <MetricCard label="Completadas" value={completed} detail={`${tasks.length ? Math.round(completed / tasks.length * 100) : 0}% de cumplimiento`} icon={CheckCircle2} tone="blue" />
               <MetricCard label="Cantidad registrada" value={quantity.toLocaleString("es-CO")} detail="Suma de resultados reportados" icon={PackageCheck} tone="orange" />
               <MetricCard label="Tiempo productivo" value={formatDuration(minutes)} detail="Con inicio y fin registrados" icon={Clock3} tone="sand" />
+              <MetricCard label="Eficiencia del equipo" value={teamEfficiency == null ? "—" : `${teamEfficiency}%`} detail="Ritmo real frente a la meta" icon={Gauge} tone="green" />
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
@@ -145,11 +157,12 @@ export default function Home() {
             {performance.length ? (
               <Card className="border-0 shadow-[0_12px_35px_rgba(36,62,54,0.06)]">
                 <CardHeader><CardTitle className="text-lg">Detalle individual</CardTitle></CardHeader>
-                <CardContent><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-sm"><thead><tr className="border-b text-left text-[11px] uppercase tracking-[0.12em] text-muted-foreground"><th className="pb-3 font-bold">Persona</th><th className="pb-3 font-bold">Asignadas</th><th className="pb-3 font-bold">Completadas</th><th className="pb-3 font-bold">Cantidad</th><th className="pb-3 font-bold">Tiempo</th><th className="pb-3 font-bold">Promedio por unidad</th></tr></thead><tbody>{performance.map(person => {
+                <CardContent><div className="overflow-x-auto"><table className="w-full min-w-[940px] text-sm"><thead><tr className="border-b text-left text-[11px] uppercase tracking-[0.12em] text-muted-foreground"><th className="pb-3 font-bold">Persona</th><th className="pb-3 font-bold">Asignadas</th><th className="pb-3 font-bold">Completadas</th><th className="pb-3 font-bold">Cantidad</th><th className="pb-3 font-bold">Tiempo</th><th className="pb-3 font-bold">Eficiencia</th><th className="pb-3 font-bold">Promedio por unidad</th></tr></thead><tbody>{performance.map(person => {
                   const comparable = person.unidades.size === 1 && person.minutos > 0 && person.cantidad > 0;
                   const unit = comparable ? Array.from(person.unidades)[0] : null;
                   const averageMinutes = comparable ? Math.round((person.minutos / person.cantidad) * 10) / 10 : null;
-                  return <tr key={person.name} className="border-b border-border/60 last:border-0"><td className="py-4 font-extrabold">{person.name}</td><td className="py-4">{person.tareas}</td><td className="py-4">{person.completadas}</td><td className="py-4">{person.cantidad.toLocaleString("es-CO")}</td><td className="py-4">{formatDuration(person.minutos)}</td><td className="py-4 font-semibold">{averageMinutes != null ? `${averageMinutes} min/${unit}` : <span className="font-normal text-muted-foreground">No comparable</span>}</td></tr>;
+                  const personEfficiency = weightedEfficiencyPercent(person.efficiencyRecords);
+                  return <tr key={person.name} className="border-b border-border/60 last:border-0"><td className="py-4 font-extrabold">{person.name}</td><td className="py-4">{person.tareas}</td><td className="py-4">{person.completadas}</td><td className="py-4">{person.cantidad.toLocaleString("es-CO")}</td><td className="py-4">{formatDuration(person.minutos)}</td><td className="py-4"><EfficiencyBadge value={personEfficiency} /></td><td className="py-4 font-semibold">{averageMinutes != null ? `${averageMinutes} min/${unit}` : <span className="font-normal text-muted-foreground">No comparable</span>}</td></tr>;
                 })}</tbody></table></div></CardContent>
               </Card>
             ) : null}

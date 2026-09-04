@@ -42,3 +42,44 @@ export function efficiencyPerHour(quantity?: number | string | null, minutes?: n
   if (!Number.isFinite(parsedQuantity) || !minutes || minutes <= 0) return null;
   return Math.round(((parsedQuantity * 60) / minutes) * 10) / 10;
 }
+
+export function taskEfficiencyPercent(
+  completedQuantity?: number | string | null,
+  actualMinutes?: number | null,
+  targetQuantity?: number | string | null,
+  targetMinutes?: number | null,
+) {
+  if (completedQuantity == null || completedQuantity === "") return null;
+  const completed = Number(completedQuantity ?? 0);
+  const target = Number(targetQuantity ?? 0);
+  if (!Number.isFinite(completed) || !Number.isFinite(target) || completed < 0 || target <= 0 || !actualMinutes || actualMinutes <= 0 || !targetMinutes || targetMinutes <= 0) {
+    return null;
+  }
+  return Math.round(((completed / actualMinutes) / (target / targetMinutes)) * 1000) / 10;
+}
+
+export function weightedEfficiencyPercent(
+  records: Array<{
+    completedQuantity?: number | string | null;
+    actualMinutes?: number | null;
+    targetQuantity?: number | string | null;
+    targetMinutes?: number | null;
+  }>,
+) {
+  let totalCompleted = 0;
+  let totalExpectedForWorkedTime = 0;
+
+  for (const record of records) {
+    if (record.completedQuantity == null || record.completedQuantity === "") continue;
+    const completed = Number(record.completedQuantity);
+    const target = Number(record.targetQuantity ?? 0);
+    const actualMinutes = Number(record.actualMinutes ?? 0);
+    const targetMinutes = Number(record.targetMinutes ?? 0);
+    if (!Number.isFinite(completed) || !Number.isFinite(target) || completed < 0 || target <= 0 || actualMinutes <= 0 || targetMinutes <= 0) continue;
+    totalCompleted += completed;
+    totalExpectedForWorkedTime += target * (actualMinutes / targetMinutes);
+  }
+
+  if (totalExpectedForWorkedTime === 0) return null;
+  return Math.round((totalCompleted / totalExpectedForWorkedTime) * 1000) / 10;
+}

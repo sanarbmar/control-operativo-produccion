@@ -3,7 +3,9 @@ import {
   deriveTaskStatus,
   durationMinutes,
   efficiencyPerHour,
+  taskEfficiencyPercent,
   validateTimeline,
+  weightedEfficiencyPercent,
 } from "../shared/operations";
 
 describe("operational time calculations", () => {
@@ -37,5 +39,33 @@ describe("operational time calculations", () => {
     expect(efficiencyPerHour(120, 90)).toBe(80);
     expect(efficiencyPerHour(50, 0)).toBeNull();
     expect(efficiencyPerHour(null, 60)).toBe(0);
+  });
+
+  it("calculates task efficiency from actual pace versus target pace", () => {
+    expect(taskEfficiencyPercent(120, 60, 100, 60)).toBe(120);
+    expect(taskEfficiencyPercent(50, 60, 100, 60)).toBe(50);
+    expect(taskEfficiencyPercent(100, 30, 100, 60)).toBe(200);
+  });
+
+  it("does not calculate efficiency without completed quantity, real duration or a full target", () => {
+    expect(taskEfficiencyPercent(null, 60, 100, 60)).toBeNull();
+    expect(taskEfficiencyPercent(0, 60, 100, 60)).toBe(0);
+    expect(taskEfficiencyPercent(100, 0, 100, 60)).toBeNull();
+    expect(taskEfficiencyPercent(100, 60, null, 60)).toBeNull();
+    expect(taskEfficiencyPercent(100, 60, 100, null)).toBeNull();
+  });
+
+  it("consolidates efficiency against the target production corresponding to worked time", () => {
+    const result = weightedEfficiencyPercent([
+      { completedQuantity: 120, actualMinutes: 60, targetQuantity: 100, targetMinutes: 60 },
+      { completedQuantity: 80, actualMinutes: 120, targetQuantity: 100, targetMinutes: 120 },
+    ]);
+    expect(result).toBe(100);
+  });
+
+  it("ignores incomplete records in consolidated efficiency", () => {
+    expect(weightedEfficiencyPercent([
+      { completedQuantity: 100, actualMinutes: 60, targetQuantity: null, targetMinutes: 60 },
+    ])).toBeNull();
   });
 });

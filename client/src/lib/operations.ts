@@ -13,6 +13,7 @@ export type TaskRecord = {
   variantName: string | null;
   status: TaskStatus;
   targetQuantity: string | null;
+  targetDurationMinutes: number | null;
   completedQuantity: string | null;
   unit: string;
   startAt: number | null;
