@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
 import {
   dailyTasks,
   employees,
@@ -19,16 +20,21 @@ let _db: ReturnType<typeof drizzle> | null = null;
 
 // Sin DATABASE_URL usamos un almacén temporal en un archivo JSON local
 // (server/localStore.ts), para poder probar la app sin una base de datos
-// MySQL real. En cuanto configures DATABASE_URL, esto deja de usarse.
+// real. En cuanto configures DATABASE_URL, esto deja de usarse.
 function useLocalStore() {
   return !process.env.DATABASE_URL;
 }
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
+// DATABASE_URL para SQLite es simplemente la ruta a un archivo, por ejemplo
+// "./local-data/produccion.db" (no una cadena de conexión de servidor).
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const sqlite = new Database(process.env.DATABASE_URL);
+      sqlite.pragma("journal_mode = WAL");
+      sqlite.pragma("foreign_keys = ON");
+      _db = drizzle(sqlite);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -72,14 +78,14 @@ export async function createUser(values: Pick<InsertUser, "name" | "email" | "pa
   const role = Number(count) === 0 ? "admin" : "user";
 
   const result = await db.insert(users).values({ ...values, role });
-  const id = Number(result[0].insertId);
+  const id = Number(result.lastInsertRowid);
   return getUserById(id);
 }
 
 export async function touchLastSignedIn(id: number) {
   if (useLocalStore()) return local.touchLastSignedIn(id);
   const db = await requireDb();
-  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, id));
+  await db.update(users).set({ lastSignedIn: new Date().toISOString() }).where(eq(users.id, id));
 }
 
 export async function listEmployees(includeInactive = false) {
@@ -95,7 +101,7 @@ export async function createEmployee(values: Pick<InsertEmployee, "name" | "area
   if (useLocalStore()) return local.createEmployee(values);
   const db = await requireDb();
   const result = await db.insert(employees).values(values);
-  return { id: Number(result[0].insertId) };
+  return { id: Number(result.lastInsertRowid) };
 }
 
 export async function updateEmployee(values: Pick<InsertEmployee, "name" | "area"> & { id: number }) {
@@ -136,7 +142,10 @@ export async function getCatalogTaskById(id: number) {
   return result[0];
 }
 
-type CatalogTaskWrite = Pick<InsertCatalogTask, "name" | "area" | "unit" | "usesQuantity" | "hasVariants"> & {
+// Required (no "| undefined") aunque el schema tenga valores por defecto:
+// quien llama a estas funciones (el router de operaciones) siempre manda
+// estos campos explícitamente.
+type CatalogTaskWrite = Required<Pick<InsertCatalogTask, "name" | "area" | "unit" | "usesQuantity" | "hasVariants">> & {
   defaultTargetQuantity?: number | string | null;
   defaultTargetMinutes?: number | null;
 };
@@ -148,7 +157,7 @@ export async function createCatalogTask(values: CatalogTaskWrite) {
     ...values,
     defaultTargetQuantity: values.defaultTargetQuantity == null ? null : String(values.defaultTargetQuantity),
   });
-  return { id: Number(result[0].insertId) };
+  return { id: Number(result.lastInsertRowid) };
 }
 
 export async function updateCatalogTask(
@@ -178,7 +187,7 @@ export async function createTaskVariant(values: Pick<InsertTaskVariant, "taskCat
   if (useLocalStore()) return local.createTaskVariant(values);
   const db = await requireDb();
   const result = await db.insert(taskVariants).values(values);
-  return { id: Number(result[0].insertId) };
+  return { id: Number(result.lastInsertRowid) };
 }
 
 export async function updateTaskVariant(values: Pick<InsertTaskVariant, "name"> & { id: number }) {
@@ -255,7 +264,7 @@ export async function createDailyTask(values: DailyTaskWrite) {
     targetQuantity: values.targetQuantity == null ? null : String(values.targetQuantity),
     completedQuantity: values.completedQuantity == null ? null : String(values.completedQuantity),
   });
-  return { id: Number(result[0].insertId) };
+  return { id: Number(result.lastInsertRowid) };
 }
 
 export async function updateDailyTask(id: number, values: Partial<DailyTaskWrite>) {

@@ -13,11 +13,12 @@ PORT=3000
 # largo y aleatorio, no tiene que ser nada especial ahora mismo.
 JWT_SECRET=clave-temporal-para-pruebas-locales-cambiala-luego-123456
 
-# --- Base de datos (la dejamos vacía por ahora, como acordamos) ---
-# Sin esto el servidor arranca igual, pero cualquier pantalla que
-# necesite datos (empleados, tareas, catálogo) va a fallar o salir
-# vacía hasta que configures una base de datos MySQL real aquí.
-DATABASE_URL=
+# --- Base de datos ---
+# Con SQLite, esto ya NO es una cadena de conexión a un servidor: es
+# simplemente la ruta a un archivo, que se crea solo la primera vez que
+# arranca el servidor. Déjalo así tal cual para que quede guardado dentro
+# de la carpeta del proyecto.
+DATABASE_URL=./local-data/produccion.db
 
 # --- Login y funciones de IA de Manus (las vamos a reemplazar) ---
 # Las dejamos vacías a propósito. Vas a poder ver que el servidor
