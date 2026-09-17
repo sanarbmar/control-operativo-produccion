@@ -40,6 +40,7 @@ export const appRouter = router({
         return db.toPublicUser(user);
       }),
 
+    // Verifica el correo y la contraseña contra la base propia (ya no depende de Manus) y crea la cookie de sesión.
     login: publicProcedure.input(credentialsInput).mutation(async ({ input, ctx }) => {
       const user = await db.getUserByEmail(input.email);
       const isValid = user ? await sdk.verifyPassword(input.password, user.passwordHash) : false;
