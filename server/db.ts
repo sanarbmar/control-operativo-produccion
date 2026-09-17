@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   dailyTasks,
@@ -10,11 +10,19 @@ import {
   InsertUser,
   taskCatalog,
   taskVariants,
+  User,
   users,
 } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import * as local from "./localStore";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+
+// Sin DATABASE_URL usamos un almacén temporal en un archivo JSON local
+// (server/localStore.ts), para poder probar la app sin una base de datos
+// MySQL real. En cuanto configures DATABASE_URL, esto deja de usarse.
+function useLocalStore() {
+  return !process.env.DATABASE_URL;
+}
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
@@ -29,84 +37,53 @@ export async function getDb() {
   return _db;
 }
 
-export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
-  }
-
-  try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
-
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
-  }
-}
-
-export async function getUserByOpenId(openId: string) {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
-}
-
 async function requireDb() {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db;
 }
 
+/** Strip the password hash before a user record is ever sent to the client. */
+export function toPublicUser<T extends { passwordHash: string }>(user: T): Omit<T, "passwordHash"> {
+  const { passwordHash: _passwordHash, ...publicUser } = user;
+  return publicUser;
+}
+
+export async function getUserByEmail(email: string) {
+  if (useLocalStore()) return local.getUserByEmail(email);
+  const db = await requireDb();
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result[0];
+}
+
+export async function getUserById(id: number) {
+  if (useLocalStore()) return local.getUserById(id);
+  const db = await requireDb();
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result[0];
+}
+
+/** Create a new local account. The very first user ever created becomes admin. */
+export async function createUser(values: Pick<InsertUser, "name" | "email" | "passwordHash">) {
+  if (useLocalStore()) return local.createUser(values);
+
+  const db = await requireDb();
+  const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(users);
+  const role = Number(count) === 0 ? "admin" : "user";
+
+  const result = await db.insert(users).values({ ...values, role });
+  const id = Number(result[0].insertId);
+  return getUserById(id);
+}
+
+export async function touchLastSignedIn(id: number) {
+  if (useLocalStore()) return local.touchLastSignedIn(id);
+  const db = await requireDb();
+  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, id));
+}
+
 export async function listEmployees(includeInactive = false) {
+  if (useLocalStore()) return local.listEmployees(includeInactive);
   const db = await requireDb();
   const query = db.select().from(employees);
   return includeInactive
@@ -115,12 +92,14 @@ export async function listEmployees(includeInactive = false) {
 }
 
 export async function createEmployee(values: Pick<InsertEmployee, "name" | "area">) {
+  if (useLocalStore()) return local.createEmployee(values);
   const db = await requireDb();
   const result = await db.insert(employees).values(values);
   return { id: Number(result[0].insertId) };
 }
 
 export async function updateEmployee(values: Pick<InsertEmployee, "name" | "area"> & { id: number }) {
+  if (useLocalStore()) return local.updateEmployee(values);
   const db = await requireDb();
   const { id, ...set } = values;
   await db.update(employees).set(set).where(eq(employees.id, id));
@@ -128,12 +107,14 @@ export async function updateEmployee(values: Pick<InsertEmployee, "name" | "area
 }
 
 export async function setEmployeeActive(id: number, isActive: boolean) {
+  if (useLocalStore()) return local.setEmployeeActive(id, isActive);
   const db = await requireDb();
   await db.update(employees).set({ isActive }).where(eq(employees.id, id));
   return { success: true } as const;
 }
 
 export async function listCatalog(includeInactive = false) {
+  if (useLocalStore()) return local.listCatalog(includeInactive);
   const db = await requireDb();
   const tasks = includeInactive
     ? await db.select().from(taskCatalog).orderBy(asc(taskCatalog.sortOrder), asc(taskCatalog.name))
@@ -149,6 +130,7 @@ export async function listCatalog(includeInactive = false) {
 }
 
 export async function getCatalogTaskById(id: number) {
+  if (useLocalStore()) return local.getCatalogTaskById(id);
   const db = await requireDb();
   const result = await db.select().from(taskCatalog).where(eq(taskCatalog.id, id)).limit(1);
   return result[0];
@@ -160,6 +142,7 @@ type CatalogTaskWrite = Pick<InsertCatalogTask, "name" | "area" | "unit" | "uses
 };
 
 export async function createCatalogTask(values: CatalogTaskWrite) {
+  if (useLocalStore()) return local.createCatalogTask(values);
   const db = await requireDb();
   const result = await db.insert(taskCatalog).values({
     ...values,
@@ -171,6 +154,7 @@ export async function createCatalogTask(values: CatalogTaskWrite) {
 export async function updateCatalogTask(
   values: CatalogTaskWrite & { id: number },
 ) {
+  if (useLocalStore()) return local.updateCatalogTask(values);
   const db = await requireDb();
   const { id, ...set } = values;
   await db
@@ -184,18 +168,21 @@ export async function updateCatalogTask(
 }
 
 export async function setCatalogTaskActive(id: number, isActive: boolean) {
+  if (useLocalStore()) return local.setCatalogTaskActive(id, isActive);
   const db = await requireDb();
   await db.update(taskCatalog).set({ isActive }).where(eq(taskCatalog.id, id));
   return { success: true } as const;
 }
 
 export async function createTaskVariant(values: Pick<InsertTaskVariant, "taskCatalogId" | "name">) {
+  if (useLocalStore()) return local.createTaskVariant(values);
   const db = await requireDb();
   const result = await db.insert(taskVariants).values(values);
   return { id: Number(result[0].insertId) };
 }
 
 export async function updateTaskVariant(values: Pick<InsertTaskVariant, "name"> & { id: number }) {
+  if (useLocalStore()) return local.updateTaskVariant(values);
   const db = await requireDb();
   const { id, ...set } = values;
   await db.update(taskVariants).set(set).where(eq(taskVariants.id, id));
@@ -203,6 +190,7 @@ export async function updateTaskVariant(values: Pick<InsertTaskVariant, "name"> 
 }
 
 export async function setTaskVariantActive(id: number, isActive: boolean) {
+  if (useLocalStore()) return local.setTaskVariantActive(id, isActive);
   const db = await requireDb();
   await db.update(taskVariants).set({ isActive }).where(eq(taskVariants.id, id));
   return { success: true } as const;
@@ -217,6 +205,7 @@ type DailyTaskFilters = {
 };
 
 export async function listDailyTasks(filters: DailyTaskFilters) {
+  if (useLocalStore()) return local.listDailyTasks(filters);
   const db = await requireDb();
   const conditions = [gte(dailyTasks.workDate, filters.from), lte(dailyTasks.workDate, filters.to)];
   if (filters.employeeId) conditions.push(eq(dailyTasks.employeeId, filters.employeeId));
@@ -259,6 +248,7 @@ type DailyTaskWrite = Omit<InsertDailyTask, "targetQuantity" | "completedQuantit
 };
 
 export async function createDailyTask(values: DailyTaskWrite) {
+  if (useLocalStore()) return local.createDailyTask(values as Parameters<typeof local.createDailyTask>[0]);
   const db = await requireDb();
   const result = await db.insert(dailyTasks).values({
     ...values,
@@ -269,6 +259,7 @@ export async function createDailyTask(values: DailyTaskWrite) {
 }
 
 export async function updateDailyTask(id: number, values: Partial<DailyTaskWrite>) {
+  if (useLocalStore()) return local.updateDailyTask(id, values as Parameters<typeof local.updateDailyTask>[1]);
   const db = await requireDb();
   await db
     .update(dailyTasks)
@@ -282,6 +273,7 @@ export async function updateDailyTask(id: number, values: Partial<DailyTaskWrite
 }
 
 export async function deleteDailyTask(id: number) {
+  if (useLocalStore()) return local.deleteDailyTask(id);
   const db = await requireDb();
   await db.delete(dailyTasks).where(eq(dailyTasks.id, id));
   return { success: true } as const;

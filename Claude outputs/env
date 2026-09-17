@@ -1,0 +1,30 @@
+# -----------------------------------------------------------------
+# Variables de entorno para probar CONTROL OPERATIVO en local
+# -----------------------------------------------------------------
+# IMPORTANTE: este archivo debe llamarse exactamente ".env" (sin .txt
+# ni ninguna otra extensión) y debe quedar en la raíz del proyecto,
+# junto a package.json. Ya te lo dejo puesto con ese nombre en la
+# carpeta del proyecto, así que no tienes que renombrar nada.
+
+# Puerto donde va a correr el servidor (opcional; si no lo pones usa 3000)
+PORT=3000
+
+# Clave para firmar las cookies de sesión. Puede ser cualquier texto
+# largo y aleatorio, no tiene que ser nada especial ahora mismo.
+JWT_SECRET=clave-temporal-para-pruebas-locales-cambiala-luego-123456
+
+# --- Base de datos (la dejamos vacía por ahora, como acordamos) ---
+# Sin esto el servidor arranca igual, pero cualquier pantalla que
+# necesite datos (empleados, tareas, catálogo) va a fallar o salir
+# vacía hasta que configures una base de datos MySQL real aquí.
+DATABASE_URL=
+
+# --- Login y funciones de IA de Manus (las vamos a reemplazar) ---
+# Las dejamos vacías a propósito. Vas a poder ver que el servidor
+# levanta y la interfaz carga, pero el botón de "iniciar sesión" no
+# va a funcionar todavía porque depende de estas variables.
+VITE_APP_ID=
+OAUTH_SERVER_URL=
+OWNER_OPEN_ID=
+BUILT_IN_FORGE_API_URL=
+BUILT_IN_FORGE_API_KEY=

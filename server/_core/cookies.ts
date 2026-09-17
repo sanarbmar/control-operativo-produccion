@@ -39,10 +39,16 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
+  const secure = isSecureRequest(req);
+
+  // "SameSite=None" cookies are rejected by browsers unless "Secure" is also
+  // set — that combination only makes sense over HTTPS. Locally (http://
+  // localhost) we use "Lax" instead, which browsers accept over plain HTTP
+  // and works fine since the frontend and API share the same origin here.
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    sameSite: secure ? "none" : "lax",
+    secure,
   };
 }

@@ -19,13 +19,12 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { ClipboardList, Factory, LayoutDashboard, LibraryBig, LogOut, PanelLeft, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
-import { Button } from "./ui/button";
+import { LoginForm } from "./LoginForm";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Resumen diario", path: "/" },
@@ -73,13 +72,7 @@ export default function DashboardLayout({
               Inicia sesión para organizar el trabajo diario y consultar el rendimiento del equipo.
             </p>
           </div>
-          <Button
-            onClick={() => startLogin()}
-            size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
-          >
-            Iniciar sesión
-          </Button>
+          <LoginForm />
         </div>
       </div>
     );
